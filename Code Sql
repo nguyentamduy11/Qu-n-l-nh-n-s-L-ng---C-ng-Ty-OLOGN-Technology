@@ -1,0 +1,663 @@
+
+
+-- I. TAO CSDL
+IF DB_ID(N'QLNhanSuLuong_OlognTechnology') IS NULL
+BEGIN
+    CREATE DATABASE QLNhanSuLuong_OlognTechnology;
+END;
+GO
+USE QLNhanSuLuong_OlognTechnology;
+GO
+
+-- II. TAO CAC BANG
+IF OBJECT_ID(N'dbo.PhongBan', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.PhongBan (
+        MaPB VARCHAR(10) NOT NULL PRIMARY KEY,
+        TenPB NVARCHAR(100) NOT NULL UNIQUE,
+        MoTa NVARCHAR(255) NULL
+    );
+END;
+GO
+
+IF OBJECT_ID(N'dbo.ChucVu', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.ChucVu (
+        MaCV VARCHAR(10) NOT NULL PRIMARY KEY,
+        TenCV NVARCHAR(100) NOT NULL UNIQUE,
+        MoTa NVARCHAR(255) NULL
+    );
+END;
+GO
+
+IF OBJECT_ID(N'dbo.NhanVien', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.NhanVien (
+        MaNV VARCHAR(10) NOT NULL PRIMARY KEY,
+        HoTen NVARCHAR(100) NOT NULL,
+        NgaySinh DATE NOT NULL,
+        GioiTinh NVARCHAR(5) NOT NULL
+            CONSTRAINT CK_NhanVien_GioiTinh CHECK (GioiTinh IN (N'Nam', N'Nữ', N'Khác')),
+        SoDienThoai VARCHAR(15) NULL,
+        Email VARCHAR(120) NULL,
+        DiaChi NVARCHAR(255) NULL,
+        NgayVaoLam DATE NOT NULL,
+        MaPB VARCHAR(10) NOT NULL,
+        MaCV VARCHAR(10) NOT NULL,
+        TrangThai NVARCHAR(20) NOT NULL
+            CONSTRAINT DF_NhanVien_TrangThai DEFAULT N'Đang làm',
+        CONSTRAINT CK_NhanVien_TrangThai CHECK (TrangThai IN (N'Đang làm', N'Tạm nghỉ', N'Nghỉ việc')),
+        CONSTRAINT CK_NhanVien_NgayVaoLam CHECK (NgayVaoLam > NgaySinh),
+        CONSTRAINT FK_NhanVien_PhongBan FOREIGN KEY (MaPB) REFERENCES dbo.PhongBan(MaPB),
+        CONSTRAINT FK_NhanVien_ChucVu FOREIGN KEY (MaCV) REFERENCES dbo.ChucVu(MaCV)
+    );
+END;
+GO
+
+IF OBJECT_ID(N'dbo.HopDong', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.HopDong (
+        MaHD VARCHAR(12) NOT NULL PRIMARY KEY,
+        MaNV VARCHAR(10) NOT NULL,
+        LoaiHopDong NVARCHAR(40) NOT NULL,
+        NgayBatDau DATE NOT NULL,
+        NgayKetThuc DATE NULL,
+        LuongCoBan DECIMAL(18,2) NOT NULL,
+        TrangThai NVARCHAR(20) NOT NULL
+            CONSTRAINT DF_HopDong_TrangThai DEFAULT N'Hiệu lực',
+        CONSTRAINT CK_HopDong_Loai CHECK (LoaiHopDong IN (N'Thử việc', N'Xác định thời hạn', N'Không xác định thời hạn')),
+        CONSTRAINT CK_HopDong_Ngay CHECK (NgayKetThuc IS NULL OR NgayKetThuc >= NgayBatDau),
+        CONSTRAINT CK_HopDong_Luong CHECK (LuongCoBan > 0),
+        CONSTRAINT CK_HopDong_TrangThai CHECK (TrangThai IN (N'Hiệu lực', N'Hết hạn', N'Đã hủy')),
+        CONSTRAINT FK_HopDong_NhanVien FOREIGN KEY (MaNV) REFERENCES dbo.NhanVien(MaNV)
+    );
+END;
+GO
+
+IF OBJECT_ID(N'dbo.ChamCong', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.ChamCong (
+        MaCC INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
+        MaNV VARCHAR(10) NOT NULL,
+        Thang TINYINT NOT NULL,
+        Nam SMALLINT NOT NULL,
+        SoNgayCong INT NOT NULL,
+        SoNgayNghiPhep INT NOT NULL CONSTRAINT DF_ChamCong_NghiPhep DEFAULT 0,
+        GhiChu NVARCHAR(200) NULL,
+        CONSTRAINT UQ_ChamCong_NhanVien_Ky UNIQUE (MaNV, Thang, Nam),
+        CONSTRAINT CK_ChamCong_Thang CHECK (Thang BETWEEN 1 AND 12),
+        CONSTRAINT CK_ChamCong_Nam CHECK (Nam BETWEEN 2000 AND 2100),
+        CONSTRAINT CK_ChamCong_NgayCong CHECK (SoNgayCong BETWEEN 0 AND 26),
+        CONSTRAINT CK_ChamCong_NghiPhep CHECK (SoNgayNghiPhep BETWEEN 0 AND 31),
+        CONSTRAINT FK_ChamCong_NhanVien FOREIGN KEY (MaNV) REFERENCES dbo.NhanVien(MaNV)
+    );
+END;
+GO
+
+IF OBJECT_ID(N'dbo.PhuCap', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.PhuCap (
+        MaPC VARCHAR(10) NOT NULL PRIMARY KEY,
+        TenPhuCap NVARCHAR(100) NOT NULL UNIQUE,
+        SoTienMacDinh DECIMAL(18,2) NOT NULL,
+        CONSTRAINT CK_PhuCap_SoTien CHECK (SoTienMacDinh >= 0)
+    );
+END;
+GO
+
+IF OBJECT_ID(N'dbo.ChiTietPhuCap', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.ChiTietPhuCap (
+        MaNV VARCHAR(10) NOT NULL,
+        MaPC VARCHAR(10) NOT NULL,
+        Thang TINYINT NOT NULL,
+        Nam SMALLINT NOT NULL,
+        SoTien DECIMAL(18,2) NOT NULL,
+        CONSTRAINT PK_ChiTietPhuCap PRIMARY KEY (MaNV, MaPC, Thang, Nam),
+        CONSTRAINT CK_ChiTietPhuCap_Thang CHECK (Thang BETWEEN 1 AND 12),
+        CONSTRAINT CK_ChiTietPhuCap_Nam CHECK (Nam BETWEEN 2000 AND 2100),
+        CONSTRAINT CK_ChiTietPhuCap_SoTien CHECK (SoTien >= 0),
+        CONSTRAINT FK_ChiTietPhuCap_NhanVien FOREIGN KEY (MaNV) REFERENCES dbo.NhanVien(MaNV),
+        CONSTRAINT FK_ChiTietPhuCap_PhuCap FOREIGN KEY (MaPC) REFERENCES dbo.PhuCap(MaPC)
+    );
+END;
+GO
+
+IF OBJECT_ID(N'dbo.ThuongKhauTru', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.ThuongKhauTru (
+        MaKhoan INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
+        MaNV VARCHAR(10) NOT NULL,
+        Thang TINYINT NOT NULL,
+        Nam SMALLINT NOT NULL,
+        Loai NVARCHAR(10) NOT NULL,
+        SoTien DECIMAL(18,2) NOT NULL,
+        LyDo NVARCHAR(200) NULL,
+        NgayGhiNhan DATETIME2 NOT NULL CONSTRAINT DF_ThuongKhauTru_Ngay DEFAULT SYSDATETIME(),
+        CONSTRAINT CK_ThuongKhauTru_Thang CHECK (Thang BETWEEN 1 AND 12),
+        CONSTRAINT CK_ThuongKhauTru_Nam CHECK (Nam BETWEEN 2000 AND 2100),
+        CONSTRAINT CK_ThuongKhauTru_Loai CHECK (Loai IN (N'Thưởng', N'Khấu trừ')),
+        CONSTRAINT CK_ThuongKhauTru_SoTien CHECK (SoTien > 0),
+        CONSTRAINT FK_ThuongKhauTru_NhanVien FOREIGN KEY (MaNV) REFERENCES dbo.NhanVien(MaNV)
+    );
+END;
+GO
+
+IF OBJECT_ID(N'dbo.BangLuong', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.BangLuong (
+        MaBangLuong INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
+        MaNV VARCHAR(10) NOT NULL,
+        Thang TINYINT NOT NULL,
+        Nam SMALLINT NOT NULL,
+        SoNgayCong INT NOT NULL,
+        LuongCoBan DECIMAL(18,2) NOT NULL,
+        TienLuongNgayCong DECIMAL(18,2) NOT NULL,
+        TongPhuCap DECIMAL(18,2) NOT NULL CONSTRAINT DF_BangLuong_PhuCap DEFAULT 0,
+        TongThuong DECIMAL(18,2) NOT NULL CONSTRAINT DF_BangLuong_Thuong DEFAULT 0,
+        TongKhauTru DECIMAL(18,2) NOT NULL CONSTRAINT DF_BangLuong_KhauTru DEFAULT 0,
+        LuongThucNhan DECIMAL(18,2) NOT NULL,
+        TrangThai NVARCHAR(15) NOT NULL CONSTRAINT DF_BangLuong_TrangThai DEFAULT N'Chưa chốt',
+        NgayTinh DATETIME2 NOT NULL CONSTRAINT DF_BangLuong_NgayTinh DEFAULT SYSDATETIME(),
+        CONSTRAINT UQ_BangLuong_NhanVien_Ky UNIQUE (MaNV, Thang, Nam),
+        CONSTRAINT CK_BangLuong_Thang CHECK (Thang BETWEEN 1 AND 12),
+        CONSTRAINT CK_BangLuong_Nam CHECK (Nam BETWEEN 2000 AND 2100),
+        CONSTRAINT CK_BangLuong_NgayCong CHECK (SoNgayCong BETWEEN 0 AND 26),
+        CONSTRAINT CK_BangLuong_SoTien CHECK (
+            LuongCoBan > 0 AND TienLuongNgayCong >= 0 AND TongPhuCap >= 0
+            AND TongThuong >= 0 AND TongKhauTru >= 0 AND LuongThucNhan >= 0
+        ),
+        CONSTRAINT CK_BangLuong_TrangThai CHECK (TrangThai IN (N'Chưa chốt', N'Đã chốt')),
+        CONSTRAINT FK_BangLuong_NhanVien FOREIGN KEY (MaNV) REFERENCES dbo.NhanVien(MaNV)
+    );
+END;
+GO
+
+-- III. TRIGGER
+-- 1. Khong cho hop dong cua cung nhan vien trung thoi gian (tru hop dong da huy)
+CREATE OR ALTER TRIGGER dbo.trg_HopDong_KhongTrungThoiGian
+ON dbo.HopDong
+AFTER INSERT, UPDATE
+AS
+BEGIN
+    SET NOCOUNT ON;
+    IF EXISTS (
+        SELECT 1
+        FROM inserted AS i
+        INNER JOIN dbo.HopDong AS h
+            ON h.MaNV = i.MaNV AND h.MaHD <> i.MaHD
+        WHERE i.TrangThai <> N'Đã hủy'
+          AND h.TrangThai <> N'Đã hủy'
+          AND i.NgayBatDau <= ISNULL(h.NgayKetThuc, CONVERT(DATE, '99991231'))
+          AND h.NgayBatDau <= ISNULL(i.NgayKetThuc, CONVERT(DATE, '99991231'))
+    )
+    BEGIN
+       ; THROW 50001, N'Nhân viên đã có hợp đồng khác trùng khoảng thời gian.', 1;
+    END;
+END;
+GO
+
+-- 2. Bang luong sau khi chot khong duoc sua/xoa
+CREATE OR ALTER TRIGGER dbo.trg_BangLuong_KhoaSauKhiChot
+ON dbo.BangLuong
+AFTER UPDATE, DELETE
+AS
+BEGIN
+    SET NOCOUNT ON;
+    IF EXISTS (SELECT 1 FROM deleted WHERE TrangThai = N'Đã chốt')
+    BEGIN
+        ;THROW 50002, N'Bảng lương đã chốt không được chỉnh sửa hoặc xóa.', 1;
+    END;
+    END;
+    GO
+-- IV. FUNCTION
+-- 1. Lay so ngay cong theo nhan vien/thang/nam
+CREATE OR ALTER FUNCTION dbo.fn_TongNgayCong
+(
+    @MaNV VARCHAR(10), @Thang TINYINT, @Nam SMALLINT
+)
+RETURNS INT
+AS
+BEGIN
+    DECLARE @KetQua INT;
+    SELECT @KetQua = SoNgayCong
+    FROM dbo.ChamCong
+    WHERE MaNV = @MaNV AND Thang = @Thang AND Nam = @Nam;
+    RETURN ISNULL(@KetQua, 0);
+END;
+GO;
+
+-- 2. Cong thuc luong minh hoa: (luong co ban * ngay cong / 26) + phu cap + thuong - khau tru
+CREATE OR ALTER FUNCTION dbo.fn_TinhLuongThucNhan
+(
+    @LuongCoBan DECIMAL(18,2),
+    @SoNgayCong INT,
+    @TongPhuCap DECIMAL(18,2),
+    @TongThuong DECIMAL(18,2),
+    @TongKhauTru DECIMAL(18,2)
+)
+RETURNS DECIMAL(18,2)
+AS
+BEGIN
+    RETURN CAST(ROUND(
+        (@LuongCoBan * @SoNgayCong / 26.0)
+        + @TongPhuCap + @TongThuong - @TongKhauTru, 2
+    ) AS DECIMAL(18,2));
+END;
+GO
+
+-- V. VIEW
+CREATE OR ALTER VIEW dbo.vw_DanhSachNhanVien
+AS
+SELECT nv.MaNV, nv.HoTen, nv.NgaySinh, nv.GioiTinh,
+       nv.SoDienThoai, nv.Email, nv.NgayVaoLam,
+       pb.MaPB, pb.TenPB, cv.MaCV, cv.TenCV, nv.TrangThai
+FROM dbo.NhanVien AS nv
+JOIN dbo.PhongBan AS pb ON nv.MaPB = pb.MaPB
+JOIN dbo.ChucVu AS cv ON nv.MaCV = cv.MaCV;
+GO
+
+CREATE OR ALTER VIEW dbo.vw_HopDongNhanVien
+AS
+SELECT hd.MaHD, nv.MaNV, nv.HoTen, pb.TenPB,
+       hd.LoaiHopDong, hd.NgayBatDau, hd.NgayKetThuc,
+       hd.LuongCoBan, hd.TrangThai
+FROM dbo.HopDong AS hd
+JOIN dbo.NhanVien AS nv ON hd.MaNV = nv.MaNV
+JOIN dbo.PhongBan AS pb ON nv.MaPB = pb.MaPB;
+GO
+
+CREATE OR ALTER VIEW dbo.vw_ChiTietBangLuong
+AS
+SELECT bl.MaBangLuong, bl.MaNV, nv.HoTen, pb.TenPB,
+       bl.Thang, bl.Nam, bl.SoNgayCong,
+       bl.LuongCoBan, bl.TienLuongNgayCong,
+       bl.TongPhuCap, bl.TongThuong, bl.TongKhauTru,
+       bl.LuongThucNhan, bl.TrangThai, bl.NgayTinh
+FROM dbo.BangLuong AS bl
+JOIN dbo.NhanVien AS nv ON bl.MaNV = nv.MaNV
+JOIN dbo.PhongBan AS pb ON nv.MaPB = pb.MaPB;
+GO
+
+CREATE OR ALTER VIEW dbo.vw_TongLuongPhongBan
+AS
+SELECT bl.Thang, bl.Nam, pb.MaPB, pb.TenPB,
+       COUNT(*) AS SoNhanVienCoLuong,
+       SUM(bl.LuongThucNhan) AS TongLuongThucNhan
+FROM dbo.BangLuong AS bl
+JOIN dbo.NhanVien AS nv ON bl.MaNV = nv.MaNV
+JOIN dbo.PhongBan AS pb ON nv.MaPB = pb.MaPB
+GROUP BY bl.Thang, bl.Nam, pb.MaPB, pb.TenPB;
+GO
+
+-- VI. STORED PROCEDURE
+-- 1. Them nhan vien
+CREATE OR ALTER PROCEDURE dbo.sp_ThemNhanVien
+    @MaNV VARCHAR(10),
+    @HoTen NVARCHAR(100),
+    @NgaySinh DATE,
+    @GioiTinh NVARCHAR(5),
+    @NgayVaoLam DATE,
+    @MaPB VARCHAR(10),
+    @MaCV VARCHAR(10),
+    @SoDienThoai VARCHAR(15) = NULL,
+    @Email VARCHAR(120) = NULL,
+    @DiaChi NVARCHAR(255) = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+    IF EXISTS (SELECT 1 FROM dbo.NhanVien WHERE MaNV = @MaNV)
+        THROW 50003, N'Mã nhân viên đã tồn tại.', 1;
+    IF NOT EXISTS (SELECT 1 FROM dbo.PhongBan WHERE MaPB = @MaPB)
+        THROW 50004, N'Mã phòng ban không tồn tại.', 1;
+    IF NOT EXISTS (SELECT 1 FROM dbo.ChucVu WHERE MaCV = @MaCV)
+        THROW 50005, N'Mã chức vụ không tồn tại.', 1;
+    INSERT INTO dbo.NhanVien
+        (MaNV, HoTen, NgaySinh, GioiTinh, SoDienThoai, Email,
+         DiaChi, NgayVaoLam, MaPB, MaCV)
+    VALUES
+        (@MaNV, @HoTen, @NgaySinh, @GioiTinh, @SoDienThoai, @Email,
+         @DiaChi, @NgayVaoLam, @MaPB, @MaCV);
+    SELECT * FROM dbo.NhanVien WHERE MaNV = @MaNV;
+END;
+GO
+
+-- 2. Cap nhat luong co ban tren hop dong
+CREATE OR ALTER PROCEDURE dbo.sp_CapNhatLuongHopDong
+    @MaHD VARCHAR(12),
+    @LuongMoi DECIMAL(18,2)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    IF NOT EXISTS (SELECT 1 FROM dbo.HopDong WHERE MaHD = @MaHD)
+        THROW 50006, N'Hợp đồng không tồn tại.', 1;
+    IF @LuongMoi IS NULL OR @LuongMoi <= 0
+        THROW 50007, N'Lương mới phải lớn hơn 0.', 1;
+    IF EXISTS (SELECT 1 FROM dbo.HopDong WHERE MaHD = @MaHD AND TrangThai = N'Đã hủy')
+        THROW 50008, N'Không thể sửa hợp đồng đã hủy.', 1;
+    UPDATE dbo.HopDong
+    SET LuongCoBan = @LuongMoi
+    WHERE MaHD = @MaHD;
+    SELECT * FROM dbo.HopDong WHERE MaHD = @MaHD;
+END;
+GO
+
+-- 3. Them hoac cap nhat cham cong cho mot thang
+CREATE OR ALTER PROCEDURE dbo.sp_GhiNhanChamCong
+    @MaNV VARCHAR(10),
+    @Thang TINYINT,
+    @Nam SMALLINT,
+    @SoNgayCong INT,
+    @SoNgayNghiPhep INT = 0,
+    @GhiChu NVARCHAR(200) = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+    IF NOT EXISTS (SELECT 1 FROM dbo.NhanVien WHERE MaNV = @MaNV)
+        THROW 50009, N'Nhân viên không tồn tại.', 1;
+    IF @Thang IS NULL OR @Thang NOT BETWEEN 1 AND 12
+       OR @Nam IS NULL OR @Nam NOT BETWEEN 2000 AND 2100
+       OR @SoNgayCong IS NULL OR @SoNgayCong NOT BETWEEN 0 AND 26
+       OR @SoNgayNghiPhep IS NULL OR @SoNgayNghiPhep NOT BETWEEN 0 AND 31
+        THROW 50010, N'Dữ liệu chấm công không hợp lệ.', 1;
+    UPDATE dbo.ChamCong
+       SET SoNgayCong = @SoNgayCong,
+           SoNgayNghiPhep = @SoNgayNghiPhep,
+           GhiChu = @GhiChu
+     WHERE MaNV = @MaNV AND Thang = @Thang AND Nam = @Nam;
+    IF @@ROWCOUNT = 0
+    BEGIN
+        INSERT INTO dbo.ChamCong (MaNV, Thang, Nam, SoNgayCong, SoNgayNghiPhep, GhiChu)
+        VALUES (@MaNV, @Thang, @Nam, @SoNgayCong, @SoNgayNghiPhep, @GhiChu);
+    END;
+    SELECT * FROM dbo.ChamCong
+    WHERE MaNV = @MaNV AND Thang = @Thang AND Nam = @Nam;
+END;
+GO
+
+-- 4. Tinh luong cho tat ca nhan vien da cham cong trong thang
+CREATE OR ALTER PROCEDURE dbo.sp_TinhLuongThang
+    @Thang TINYINT,
+    @Nam SMALLINT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
+
+    IF @Thang IS NULL OR @Thang NOT BETWEEN 1 AND 12
+       OR @Nam IS NULL OR @Nam NOT BETWEEN 2000 AND 2100
+        THROW 50011, N'Tháng hoặc năm không hợp lệ.', 1;
+
+    DECLARE @DauThang DATE = DATEFROMPARTS(@Nam, @Thang, 1);
+    DECLARE @CuoiThang DATE = EOMONTH(@DauThang);
+
+    IF NOT EXISTS (SELECT 1 FROM dbo.ChamCong WHERE Thang = @Thang AND Nam = @Nam)
+        THROW 50012, N'Chưa có dữ liệu chấm công trong kỳ.', 1;
+
+    IF EXISTS (
+        SELECT 1 FROM dbo.ChamCong AS cc
+        WHERE cc.Thang = @Thang AND cc.Nam = @Nam
+          AND NOT EXISTS (
+              SELECT 1 FROM dbo.HopDong AS hd
+              WHERE hd.MaNV = cc.MaNV AND hd.TrangThai <> N'Đã hủy'
+                AND hd.NgayBatDau <= @CuoiThang
+                AND (hd.NgayKetThuc IS NULL OR hd.NgayKetThuc >= @DauThang)
+          )
+    )
+        THROW 50013, N'Có nhân viên chấm công nhưng thiếu hợp đồng phù hợp kỳ lương.', 1;
+
+    BEGIN TRY
+        BEGIN TRANSACTION;
+
+        SELECT cc.MaNV, cc.SoNgayCong, hd.LuongCoBan,
+               CAST(ROUND(hd.LuongCoBan * cc.SoNgayCong / 26.0, 2) AS DECIMAL(18,2)) AS TienLuongNgayCong,
+               CAST(ISNULL(pc.TongPhuCap, 0) AS DECIMAL(18,2)) AS TongPhuCap,
+               CAST(ISNULL(tk.TongThuong, 0) AS DECIMAL(18,2)) AS TongThuong,
+               CAST(ISNULL(tk.TongKhauTru, 0) AS DECIMAL(18,2)) AS TongKhauTru,
+               dbo.fn_TinhLuongThucNhan(
+                   hd.LuongCoBan, cc.SoNgayCong,
+                   ISNULL(pc.TongPhuCap, 0),
+                   ISNULL(tk.TongThuong, 0),
+                   ISNULL(tk.TongKhauTru, 0)
+               ) AS LuongThucNhan
+        INTO #LuongTam
+        FROM dbo.ChamCong AS cc
+        CROSS APPLY (
+            SELECT TOP (1) h.LuongCoBan
+            FROM dbo.HopDong AS h
+            WHERE h.MaNV = cc.MaNV AND h.TrangThai <> N'Đã hủy'
+              AND h.NgayBatDau <= @CuoiThang
+              AND (h.NgayKetThuc IS NULL OR h.NgayKetThuc >= @DauThang)
+            ORDER BY h.NgayBatDau DESC, h.MaHD DESC
+        ) AS hd
+        OUTER APPLY (
+            SELECT SUM(p.SoTien) AS TongPhuCap
+            FROM dbo.ChiTietPhuCap AS p
+            WHERE p.MaNV = cc.MaNV AND p.Thang = @Thang AND p.Nam = @Nam
+        ) AS pc
+        OUTER APPLY (
+            SELECT SUM(CASE WHEN t.Loai = N'Thưởng' THEN t.SoTien ELSE 0 END) AS TongThuong,
+                   SUM(CASE WHEN t.Loai = N'Khấu trừ' THEN t.SoTien ELSE 0 END) AS TongKhauTru
+            FROM dbo.ThuongKhauTru AS t
+            WHERE t.MaNV = cc.MaNV AND t.Thang = @Thang AND t.Nam = @Nam
+        ) AS tk
+        WHERE cc.Thang = @Thang AND cc.Nam = @Nam;
+
+        IF EXISTS (SELECT 1 FROM #LuongTam WHERE LuongThucNhan < 0)
+            THROW 50014, N'Có bảng lương âm: hãy kiểm tra các khoản khấu trừ.', 1;
+
+        IF EXISTS (
+            SELECT 1 FROM dbo.BangLuong AS bl
+            JOIN #LuongTam AS t ON t.MaNV = bl.MaNV
+            WHERE bl.Thang = @Thang AND bl.Nam = @Nam
+              AND bl.TrangThai = N'Đã chốt'
+        )
+            THROW 50015, N'Kỳ lương có nhân viên đã chốt: không được tính đè.', 1;
+
+        UPDATE bl
+           SET bl.SoNgayCong = t.SoNgayCong,
+               bl.LuongCoBan = t.LuongCoBan,
+               bl.TienLuongNgayCong = t.TienLuongNgayCong,
+               bl.TongPhuCap = t.TongPhuCap,
+               bl.TongThuong = t.TongThuong,
+               bl.TongKhauTru = t.TongKhauTru,
+               bl.LuongThucNhan = t.LuongThucNhan,
+               bl.NgayTinh = SYSDATETIME()
+        FROM dbo.BangLuong AS bl
+        JOIN #LuongTam AS t ON t.MaNV = bl.MaNV
+        WHERE bl.Thang = @Thang AND bl.Nam = @Nam;
+
+        INSERT INTO dbo.BangLuong
+            (MaNV, Thang, Nam, SoNgayCong, LuongCoBan, TienLuongNgayCong,
+             TongPhuCap, TongThuong, TongKhauTru, LuongThucNhan)
+        SELECT t.MaNV, @Thang, @Nam, t.SoNgayCong, t.LuongCoBan,
+               t.TienLuongNgayCong, t.TongPhuCap, t.TongThuong,
+               t.TongKhauTru, t.LuongThucNhan
+        FROM #LuongTam AS t
+        WHERE NOT EXISTS (
+            SELECT 1 FROM dbo.BangLuong AS bl
+            WHERE bl.MaNV = t.MaNV AND bl.Thang = @Thang AND bl.Nam = @Nam
+        );
+
+        COMMIT TRANSACTION;
+    END TRY
+    BEGIN CATCH
+        IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+        THROW;
+    END CATCH;
+
+    SELECT * FROM dbo.vw_ChiTietBangLuong
+    WHERE Thang = @Thang AND Nam = @Nam
+    ORDER BY MaNV;
+END;
+GO
+
+-- 5. Tra cuu bang luong theo ky / theo nhan vien
+CREATE OR ALTER PROCEDURE dbo.sp_TraCuuBangLuong
+    @Thang TINYINT = NULL,
+    @Nam SMALLINT = NULL,
+    @MaNV VARCHAR(10) = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SELECT *
+    FROM dbo.vw_ChiTietBangLuong
+    WHERE (@Thang IS NULL OR Thang = @Thang)
+      AND (@Nam IS NULL OR Nam = @Nam)
+      AND (@MaNV IS NULL OR MaNV = @MaNV)
+    ORDER BY Nam DESC, Thang DESC, MaNV;
+END;
+GO
+
+-- VII. DU LIEU MAU (chi chen neu chua ton tai)
+INSERT INTO dbo.PhongBan (MaPB, TenPB, MoTa)
+SELECT v.MaPB, v.TenPB, v.MoTa
+FROM (VALUES
+    ('PB01', N'Phòng Công nghệ thông tin', N'Phát triển và kiểm thử phần mềm'),
+    ('PB02', N'Phòng Nhân sự', N'Quản lý hồ sơ và nhân sự'),
+    ('PB03', N'Phòng Kế toán', N'Tài chính và tiền lương')
+) AS v(MaPB, TenPB, MoTa)
+WHERE NOT EXISTS (SELECT 1 FROM dbo.PhongBan WHERE MaPB = v.MaPB);
+
+INSERT INTO dbo.ChucVu (MaCV, TenCV, MoTa)
+SELECT v.MaCV, v.TenCV, v.MoTa
+FROM (VALUES
+    ('CV01', N'Lập trình viên', N'Phát triển phần mềm'),
+    ('CV02', N'Kiểm thử viên', N'Kiểm thử chất lượng phần mềm'),
+    ('CV03', N'Chuyên viên nhân sự', N'Quản lý nhân sự'),
+    ('CV04', N'Chuyên viên kế toán', N'Quản lý số liệu kế toán')
+) AS v(MaCV, TenCV, MoTa)
+WHERE NOT EXISTS (SELECT 1 FROM dbo.ChucVu WHERE MaCV = v.MaCV);
+
+INSERT INTO dbo.NhanVien
+    (MaNV, HoTen, NgaySinh, GioiTinh, SoDienThoai, Email,
+     DiaChi, NgayVaoLam, MaPB, MaCV)
+SELECT v.MaNV, v.HoTen, v.NgaySinh, v.GioiTinh, v.SDT, v.Email,
+       v.DiaChi, v.NgayVaoLam, v.MaPB, v.MaCV
+FROM (VALUES
+    ('NV001', N'Nguyễn Minh An', CONVERT(DATE,'19980112'), N'Nam', '0900000001', 'an@ologn.example', N'TP. Hồ Chí Minh', CONVERT(DATE,'20240115'), 'PB01', 'CV01'),
+    ('NV002', N'Trần Thị Bình', CONVERT(DATE,'19990721'), N'Nữ',  '0900000002', 'binh@ologn.example', N'TP. Hồ Chí Minh', CONVERT(DATE,'20240301'), 'PB01', 'CV02'),
+    ('NV003', N'Lê Quốc Cường', CONVERT(DATE,'19961105'), N'Nam', '0900000003', 'cuong@ologn.example', N'TP. Hồ Chí Minh', CONVERT(DATE,'20250210'), 'PB02', 'CV03'),
+    ('NV004', N'Phạm Ngọc Dung', CONVERT(DATE,'20000214'), N'Nữ', '0900000004', 'dung@ologn.example', N'TP. Hồ Chí Minh', CONVERT(DATE,'20250601'), 'PB03', 'CV04')
+) AS v(MaNV, HoTen, NgaySinh, GioiTinh, SDT, Email, DiaChi, NgayVaoLam, MaPB, MaCV)
+WHERE NOT EXISTS (SELECT 1 FROM dbo.NhanVien WHERE MaNV = v.MaNV);
+
+INSERT INTO dbo.HopDong
+    (MaHD, MaNV, LoaiHopDong, NgayBatDau, NgayKetThuc, LuongCoBan)
+SELECT v.MaHD, v.MaNV, v.LoaiHopDong, v.NgayBatDau, v.NgayKetThuc, v.LuongCoBan
+FROM (VALUES
+    ('HD001', 'NV001', N'Không xác định thời hạn', CONVERT(DATE,'20240115'), CAST(NULL AS DATE), CAST(14000000 AS DECIMAL(18,2))),
+    ('HD002', 'NV002', N'Không xác định thời hạn', CONVERT(DATE,'20240301'), CAST(NULL AS DATE), CAST(12000000 AS DECIMAL(18,2))),
+    ('HD003', 'NV003', N'Xác định thời hạn', CONVERT(DATE,'20250210'), CONVERT(DATE,'20270209'), CAST(11000000 AS DECIMAL(18,2))),
+    ('HD004', 'NV004', N'Xác định thời hạn', CONVERT(DATE,'20250601'), CONVERT(DATE,'20270531'), CAST(10500000 AS DECIMAL(18,2)))
+) AS v(MaHD, MaNV, LoaiHopDong, NgayBatDau, NgayKetThuc, LuongCoBan)
+WHERE NOT EXISTS (SELECT 1 FROM dbo.HopDong WHERE MaHD = v.MaHD);
+
+INSERT INTO dbo.ChamCong (MaNV, Thang, Nam, SoNgayCong, SoNgayNghiPhep, GhiChu)
+SELECT v.MaNV, v.Thang, v.Nam, v.SoNgayCong, v.SoNgayNghiPhep, v.GhiChu
+FROM (VALUES
+    ('NV001', CAST(9 AS TINYINT), CAST(2026 AS SMALLINT), 26, 0, N'Đủ công'),
+    ('NV002', CAST(9 AS TINYINT), CAST(2026 AS SMALLINT), 24, 2, N'Nghỉ 2 ngày'),
+    ('NV003', CAST(9 AS TINYINT), CAST(2026 AS SMALLINT), 25, 1, N'Nghỉ 1 ngày'),
+    ('NV004', CAST(9 AS TINYINT), CAST(2026 AS SMALLINT), 26, 0, N'Đủ công')
+) AS v(MaNV, Thang, Nam, SoNgayCong, SoNgayNghiPhep, GhiChu)
+WHERE NOT EXISTS (
+    SELECT 1 FROM dbo.ChamCong AS cc
+    WHERE cc.MaNV = v.MaNV AND cc.Thang = v.Thang AND cc.Nam = v.Nam
+);
+
+INSERT INTO dbo.PhuCap (MaPC, TenPhuCap, SoTienMacDinh)
+SELECT v.MaPC, v.TenPhuCap, v.SoTienMacDinh
+FROM (VALUES
+    ('PC01', N'Phụ cấp ăn trưa', CAST(500000 AS DECIMAL(18,2))),
+    ('PC02', N'Phụ cấp đi lại', CAST(300000 AS DECIMAL(18,2))),
+    ('PC03', N'Phụ cấp trách nhiệm', CAST(700000 AS DECIMAL(18,2)))
+) AS v(MaPC, TenPhuCap, SoTienMacDinh)
+WHERE NOT EXISTS (SELECT 1 FROM dbo.PhuCap WHERE MaPC = v.MaPC);
+
+INSERT INTO dbo.ChiTietPhuCap (MaNV, MaPC, Thang, Nam, SoTien)
+SELECT v.MaNV, v.MaPC, v.Thang, v.Nam, v.SoTien
+FROM (VALUES
+    ('NV001', 'PC01', CAST(9 AS TINYINT), CAST(2026 AS SMALLINT), CAST(500000 AS DECIMAL(18,2))),
+    ('NV001', 'PC02', CAST(9 AS TINYINT), CAST(2026 AS SMALLINT), CAST(300000 AS DECIMAL(18,2))),
+    ('NV002', 'PC01', CAST(9 AS TINYINT), CAST(2026 AS SMALLINT), CAST(500000 AS DECIMAL(18,2))),
+    ('NV003', 'PC03', CAST(9 AS TINYINT), CAST(2026 AS SMALLINT), CAST(700000 AS DECIMAL(18,2))),
+    ('NV004', 'PC01', CAST(9 AS TINYINT), CAST(2026 AS SMALLINT), CAST(500000 AS DECIMAL(18,2)))
+) AS v(MaNV, MaPC, Thang, Nam, SoTien)
+WHERE NOT EXISTS (
+    SELECT 1 FROM dbo.ChiTietPhuCap AS c
+    WHERE c.MaNV = v.MaNV AND c.MaPC = v.MaPC
+      AND c.Thang = v.Thang AND c.Nam = v.Nam
+);
+
+INSERT INTO dbo.ThuongKhauTru (MaNV, Thang, Nam, Loai, SoTien, LyDo)
+SELECT v.MaNV, v.Thang, v.Nam, v.Loai, v.SoTien, v.LyDo
+FROM (VALUES
+    ('NV001', CAST(9 AS TINYINT), CAST(2026 AS SMALLINT), N'Thưởng', CAST(1500000 AS DECIMAL(18,2)), N'Hoàn thành dự án'),
+    ('NV001', CAST(9 AS TINYINT), CAST(2026 AS SMALLINT), N'Khấu trừ', CAST(200000 AS DECIMAL(18,2)), N'Khấu trừ minh họa'),
+    ('NV003', CAST(9 AS TINYINT), CAST(2026 AS SMALLINT), N'Thưởng', CAST(300000 AS DECIMAL(18,2)), N'Đạt thành tích tốt'),
+    ('NV004', CAST(9 AS TINYINT), CAST(2026 AS SMALLINT), N'Khấu trừ', CAST(150000 AS DECIMAL(18,2)), N'Khấu trừ minh họa')
+) AS v(MaNV, Thang, Nam, Loai, SoTien, LyDo)
+WHERE NOT EXISTS (
+    SELECT 1 FROM dbo.ThuongKhauTru AS t
+    WHERE t.MaNV = v.MaNV AND t.Thang = v.Thang AND t.Nam = v.Nam
+      AND t.Loai = v.Loai AND t.LyDo = v.LyDo
+);
+GO
+
+-- VIII. DEMO: TAO BANG LUONG THANG 09/2026 (bo qua neu ky da duoc chot)
+IF NOT EXISTS (
+    SELECT 1 FROM dbo.BangLuong
+    WHERE Thang = 9 AND Nam = 2026 AND TrangThai = N'Đã chốt'
+)
+BEGIN
+    EXEC dbo.sp_TinhLuongThang @Thang = 9, @Nam = 2026;
+END;
+GO
+
+-- IX. CAC LENH KIEM TRA
+SELECT * FROM dbo.vw_DanhSachNhanVien ORDER BY MaNV;
+SELECT * FROM dbo.vw_HopDongNhanVien ORDER BY MaHD;
+SELECT * FROM dbo.vw_ChiTietBangLuong ORDER BY Nam DESC, Thang DESC, MaNV;
+SELECT * FROM dbo.vw_TongLuongPhongBan ORDER BY Nam DESC, Thang DESC, MaPB;
+SELECT dbo.fn_TongNgayCong('NV001', 9, 2026) AS TongNgayCong_NV001;
+EXEC dbo.sp_TraCuuBangLuong @Thang = 9, @Nam = 2026;
+GO
+
+
+EXEC dbo.sp_ThemNhanVien
+   @MaNV = 'NV005', @HoTen = N'Võ Minh Huy',
+   @NgaySinh = '2000-05-15', @GioiTinh = N'Nam',
+   @NgayVaoLam = '2026-10-01', @MaPB = 'PB01', @MaCV = 'CV01';
+
+   EXEC dbo.sp_CapNhatLuongHopDong
+
+    @MaHD = 'HD001', @LuongMoi = 15500000;
+
+
+    EXEC dbo.sp_GhiNhanChamCong
+
+    @MaNV = 'NV001', @Thang = 10, @Nam = 2026,
+
+    @SoNgayCong = 25, @SoNgayNghiPhep = 1;
+
+
+    EXEC dbo.sp_TinhLuongThang @Thang = 1, @Nam = 2026;
+
+
+    USE QLNhanSuLuong_OlognTechnology;
+GO
+
+SELECT *
+FROM dbo.ChamCong
+WHERE Thang = 9 AND Nam = 2026;
+
+EXEC dbo.sp_TraCuuBangLuong
+
+    @Thang = 9, @Nam = 2026;
+
+ 
+
+EXEC dbo.sp_TraCuuBangLuong
+
+    @MaNV = 'NV001';
